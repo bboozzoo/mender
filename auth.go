@@ -19,34 +19,9 @@ import (
 	"os"
 
 	"github.com/mendersoftware/log"
+	"github.com/mendersoftware/mender/client"
 	"github.com/pkg/errors"
 )
-
-type AuthToken string
-
-type AuthReqData struct {
-	IdData      string `json:"id_data"`
-	TenantToken string `json:"tenant_token"`
-	Pubkey      string `json:"pubkey"`
-	SeqNumber   uint64 `json:"seq_no"`
-}
-
-type AuthRequest struct {
-	// request message data
-	Data []byte
-	// authorization token
-	Token AuthToken
-	// request signature
-	Signature []byte
-}
-
-// handler for authorization message data
-type AuthDataMessenger interface {
-	// build authorization request data, returns auth request or an error
-	MakeAuthRequest() (*AuthRequest, error)
-	// receive authoiriation data response, returns error if response is invalid
-	RecvAuthResponse([]byte) error
-}
 
 type AuthManager interface {
 	// returns true if authorization data is current and valid
@@ -60,7 +35,7 @@ type AuthManager interface {
 	// generate device key (will overwrite an already existing key)
 	GenerateKey() error
 
-	AuthDataMessenger
+	client.AuthDataMessenger
 }
 
 const (
@@ -68,7 +43,7 @@ const (
 	authTenantTokenName = "authtentoken"
 	authSeqName         = "authseq"
 
-	noAuthToken = AuthToken("")
+	noAuthToken = client.EmptyToken
 )
 
 type MenderAuthManager struct {
@@ -152,15 +127,7 @@ func (m *MenderAuthManager) MakeAuthRequest() (*AuthRequest, error) {
 
 	log.Debugf("authorization data: %v", authd)
 
-	databuf := &bytes.Buffer{}
-	enc := json.NewEncoder(databuf)
-
-	err = enc.Encode(&authd)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to encode auth request")
-	}
-
-	reqdata := databuf.Bytes()
+	reqdata := authd.ToBytes()
 
 	// generate signature
 	sig, err := m.keyStore.Sign(reqdata)
@@ -170,7 +137,7 @@ func (m *MenderAuthManager) MakeAuthRequest() (*AuthRequest, error) {
 
 	return &AuthRequest{
 		Data:      reqdata,
-		Token:     AuthToken(tentok),
+		Token:     client.Token(tentok),
 		Signature: sig,
 	}, nil
 }
