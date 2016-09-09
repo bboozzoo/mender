@@ -14,8 +14,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"os"
 
 	"github.com/mendersoftware/log"
@@ -27,7 +25,7 @@ type AuthManager interface {
 	// returns true if authorization data is current and valid
 	IsAuthorized() bool
 	// returns device's authorization token
-	AuthToken() (AuthToken, error)
+	AuthToken() (client.Token, error)
 	// removes authentication token
 	RemoveAuthToken() error
 	// check if device key is available
@@ -91,10 +89,10 @@ func (m *MenderAuthManager) IsAuthorized() bool {
 	return true
 }
 
-func (m *MenderAuthManager) MakeAuthRequest() (*AuthRequest, error) {
+func (m *MenderAuthManager) MakeAuthRequest() (*client.AuthRequest, error) {
 
 	var err error
-	authd := AuthReqData{}
+	authd := client.AuthReqData{}
 
 	idata, err := m.idSrc.Get()
 	if err != nil {
@@ -127,7 +125,10 @@ func (m *MenderAuthManager) MakeAuthRequest() (*AuthRequest, error) {
 
 	log.Debugf("authorization data: %v", authd)
 
-	reqdata := authd.ToBytes()
+	reqdata, err := authd.ToBytes()
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to convert auth request data")
+	}
 
 	// generate signature
 	sig, err := m.keyStore.Sign(reqdata)
@@ -135,7 +136,7 @@ func (m *MenderAuthManager) MakeAuthRequest() (*AuthRequest, error) {
 		return nil, errors.Wrapf(err, "failed to sign auth request")
 	}
 
-	return &AuthRequest{
+	return &client.AuthRequest{
 		Data:      reqdata,
 		Token:     client.Token(tentok),
 		Signature: sig,
@@ -153,7 +154,7 @@ func (m *MenderAuthManager) RecvAuthResponse(data []byte) error {
 	return nil
 }
 
-func (m *MenderAuthManager) AuthToken() (AuthToken, error) {
+func (m *MenderAuthManager) AuthToken() (client.Token, error) {
 	data, err := m.store.ReadAll(authTokenName)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -162,7 +163,7 @@ func (m *MenderAuthManager) AuthToken() (AuthToken, error) {
 		return noAuthToken, errors.Wrapf(err, "failed to read auth token data")
 	}
 
-	return AuthToken(data), nil
+	return client.Token(data), nil
 }
 
 func (m *MenderAuthManager) RemoveAuthToken() error {

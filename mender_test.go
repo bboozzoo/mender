@@ -15,6 +15,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -24,13 +25,28 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mendersoftware/mender/client"
 	"github.com/stretchr/testify/assert"
 )
 
 type testMenderPieces struct {
 	MenderPieces
-	updater Updater
-	authReq AuthRequester
+	updater client.Updater
+	authReq client.AuthRequester
+}
+
+type fakeAuthorizer struct {
+	rsp       []byte
+	rspErr    error
+	url       string
+	reqCalled bool
+}
+
+func (f *fakeAuthorizer) Request(api client.ApiRequester, url string, adm client.AuthDataMessenger) ([]byte, error) {
+	fmt.Printf("url: %s\n", url)
+	f.url = url
+	f.reqCalled = true
+	return f.rsp, f.rspErr
 }
 
 func Test_getImageId_noImageIdInFile_returnsEmptyId(t *testing.T) {
@@ -254,7 +270,7 @@ func Test_CheckUpdateSimple(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, up)
 
-	update := UpdateResponse{}
+	update := client.UpdateResponse{}
 	updaterIface := &fakeUpdater{
 		GetScheduledUpdateReturnIface: update,
 	}
@@ -315,9 +331,31 @@ func TestMenderGetPollInterval(t *testing.T) {
 	assert.Equal(t, time.Duration(20)*time.Second, intvl)
 }
 
+type testAuthDataMessenger struct {
+	reqData  []byte
+	sigData  []byte
+	code     client.Token
+	reqError error
+	rspError error
+	rspData  []byte
+}
+
+func (t *testAuthDataMessenger) MakeAuthRequest() (*client.AuthRequest, error) {
+	return &client.AuthRequest{
+		t.reqData,
+		t.code,
+		t.sigData,
+	}, t.reqError
+}
+
+func (t *testAuthDataMessenger) RecvAuthResponse(data []byte) error {
+	t.rspData = data
+	return t.rspError
+}
+
 type testAuthManager struct {
 	authorized     bool
-	authtoken      AuthToken
+	authtoken      client.Token
 	authtokenErr   error
 	haskey         bool
 	generatekeyErr error
@@ -328,7 +366,7 @@ func (a *testAuthManager) IsAuthorized() bool {
 	return a.authorized
 }
 
-func (a *testAuthManager) AuthToken() (AuthToken, error) {
+func (a *testAuthManager) AuthToken() (client.Token, error) {
 	return a.authtoken, a.authtokenErr
 }
 
@@ -353,7 +391,7 @@ func TestMenderAuthorize(t *testing.T) {
 		rsp: rspdata,
 	}
 
-	atok := AuthToken("authorized")
+	atok := client.Token("authorized")
 	authMgr := &testAuthManager{
 		authorized: true,
 		authtoken:  atok,
@@ -450,10 +488,10 @@ func TestMenderReportStatus(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = mender.ReportUpdateStatus(
-		UpdateResponse{
+		client.UpdateResponse{
 			ID: "foobar",
 		},
-		statusSuccess,
+		client.StatusSuccess,
 	)
 	assert.Nil(t, err)
 	assert.JSONEq(t, `{"status": "success"}`, string(responder.recdata))
@@ -461,10 +499,10 @@ func TestMenderReportStatus(t *testing.T) {
 
 	responder.httpStatus = 401
 	err = mender.ReportUpdateStatus(
-		UpdateResponse{
+		client.UpdateResponse{
 			ID: "foobar",
 		},
-		statusSuccess,
+		client.StatusSuccess,
 	)
 	assert.NotNil(t, err)
 }
@@ -512,7 +550,7 @@ func TestMenderLogUpload(t *testing.T) {
 }`)
 
 	err = mender.UploadLog(
-		UpdateResponse{
+		client.UpdateResponse{
 			ID: "foobar",
 		},
 		logs,
@@ -535,7 +573,7 @@ func TestMenderLogUpload(t *testing.T) {
 
 	responder.httpStatus = 401
 	err = mender.UploadLog(
-		UpdateResponse{
+		client.UpdateResponse{
 			ID: "foobar",
 		},
 		logs,

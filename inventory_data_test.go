@@ -16,6 +16,7 @@ package main
 import (
 	"testing"
 
+	"github.com/mendersoftware/mender/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +28,7 @@ func TestTempInventoryData(t *testing.T) {
 	assert.Equal(t, tempInventoryAttribute{"bar"}, td["foo"])
 
 	fattrs := td["foo"]
-	assert.Equal(t, InventoryAttribute{"foo", "bar"},
+	assert.Equal(t, client.InventoryAttribute{"foo", "bar"},
 		fattrs.ToInventoryAttribute("foo"))
 
 	td.Add("foo", "baz")
@@ -35,7 +36,7 @@ func TestTempInventoryData(t *testing.T) {
 	assert.Equal(t, tempInventoryAttribute{"bar", "baz"}, td["foo"])
 
 	fattrs = td["foo"]
-	assert.Equal(t, InventoryAttribute{"foo", []string{"bar", "baz"}},
+	assert.Equal(t, client.InventoryAttribute{"foo", []string{"bar", "baz"}},
 		fattrs.ToInventoryAttribute("foo"))
 
 	tdnew := tempInventoryData{
@@ -53,7 +54,7 @@ func TestTempInventoryData(t *testing.T) {
 	assert.Equal(t, expecttd, td)
 
 	idata := td.ToInventoryData()
-	// for each InventoryAttribute check that it exists in expected set and that
+	// for each client.InventoryAttribute check that it exists in expected set and that
 	// it has an equal value
 	for _, idi := range idata {
 		if assert.Contains(t, expecttd, idi.Name, expecttd) {

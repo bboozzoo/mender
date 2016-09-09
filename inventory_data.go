@@ -22,6 +22,7 @@ import (
 	"syscall"
 
 	"github.com/mendersoftware/log"
+	"github.com/mendersoftware/mender/client"
 	"github.com/pkg/errors"
 )
 
@@ -30,7 +31,7 @@ const (
 )
 
 type InventoryDataGetter interface {
-	Get() (InventoryData, error)
+	Get() (client.InventoryData, error)
 }
 
 func NewInventoryDataGetter(scriptsDir string) InventoryDataGetter {
@@ -76,13 +77,22 @@ func listRunnable(dpath string) ([]string, error) {
 
 type tempInventoryAttribute []string
 
-func (tia tempInventoryAttribute) ToInventoryAttribute(name string) InventoryAttribute {
+func (tia tempInventoryAttribute) ToInventoryAttribute(name string) client.InventoryAttribute {
 	if len(tia) > 1 {
-		return InventoryAttribute{Name: name, Value: []string(tia)}
+		return client.InventoryAttribute{
+			Name:  name,
+			Value: []string(tia),
+		}
 	} else if len(tia) == 1 {
-		return InventoryAttribute{Name: name, Value: tia[0]}
+		return client.InventoryAttribute{
+			Name:  name,
+			Value: tia[0],
+		}
 	}
-	return InventoryAttribute{Name: name, Value: ""}
+	return client.InventoryAttribute{
+		Name:  name,
+		Value: "",
+	}
 }
 
 type tempInventoryData map[string]tempInventoryAttribute
@@ -102,15 +112,15 @@ func (tid tempInventoryData) Append(idata tempInventoryData) {
 	}
 }
 
-func (tid tempInventoryData) ToInventoryData() InventoryData {
-	data := make(InventoryData, 0, len(tid))
+func (tid tempInventoryData) ToInventoryData() client.InventoryData {
+	data := make(client.InventoryData, 0, len(tid))
 	for k, v := range tid {
 		data = append(data, v.ToInventoryAttribute(k))
 	}
 	return data
 }
 
-func (id *InventoryDataRunner) Get() (InventoryData, error) {
+func (id *InventoryDataRunner) Get() (client.InventoryData, error) {
 	tools, err := listRunnable(id.dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to list tools for inventory data")

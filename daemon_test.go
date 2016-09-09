@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mendersoftware/mender/client"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,10 +61,10 @@ type fakeUpdater struct {
 	fetchUpdateReturnError        error
 }
 
-func (f fakeUpdater) GetScheduledUpdate(api ApiRequester, url string) (interface{}, error) {
+func (f fakeUpdater) GetScheduledUpdate(api client.ApiRequester, url string) (interface{}, error) {
 	return f.GetScheduledUpdateReturnIface, f.GetScheduledUpdateReturnError
 }
-func (f fakeUpdater) FetchUpdate(api ApiRequester, url string) (io.ReadCloser, int64, error) {
+func (f fakeUpdater) FetchUpdate(api client.ApiRequester, url string) (io.ReadCloser, int64, error) {
 	return f.fetchUpdateReturnReadCloser, f.fetchUpdateReturnSize, f.fetchUpdateReturnError
 }
 
@@ -103,7 +104,7 @@ type daemonTestController struct {
 	updateCheckCount int
 }
 
-func (d *daemonTestController) CheckUpdate() (*UpdateResponse, menderError) {
+func (d *daemonTestController) CheckUpdate() (*client.UpdateResponse, menderError) {
 	d.updateCheckCount = d.updateCheckCount + 1
 	return d.stateTestController.CheckUpdate()
 }
