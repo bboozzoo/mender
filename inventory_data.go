@@ -24,6 +24,7 @@ import (
 	"syscall"
 
 	"github.com/mendersoftware/log"
+	"github.com/mendersoftware/mender/client"
 	"github.com/pkg/errors"
 )
 
@@ -67,7 +68,7 @@ func listRunnable(dpath string) ([]string, error) {
 	return runnable, nil
 }
 
-func (id *InventoryDataRunner) Get() (InventoryData, error) {
+func (id *InventoryDataRunner) Get() (client.InventoryData, error) {
 	tools, err := listRunnable(id.dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to list tools for inventory data")
@@ -100,20 +101,20 @@ func (id *InventoryDataRunner) Get() (InventoryData, error) {
 }
 
 type InventoryDataDecoder struct {
-	data map[string]InventoryAttribute
+	data map[string]client.InventoryAttribute
 }
 
 func NewInventoryDataDecoder() *InventoryDataDecoder {
 	return &InventoryDataDecoder{
-		make(map[string]InventoryAttribute),
+		make(map[string]client.InventoryAttribute),
 	}
 }
 
-func (id *InventoryDataDecoder) GetInventoryData() InventoryData {
+func (id *InventoryDataDecoder) GetInventoryData() client.InventoryData {
 	if len(id.data) == 0 {
 		return nil
 	}
-	idata := make(InventoryData, 0, len(id.data))
+	idata := make(client.InventoryData, 0, len(id.data))
 	for _, v := range id.data {
 		idata = append(idata, v)
 	}
@@ -140,10 +141,10 @@ func (id *InventoryDataDecoder) Write(p []byte) (n int, err error) {
 			switch data.Value.(type) {
 			case string:
 				newVal := []string{data.Value.(string), ia.Value.(string)}
-				id.data[ia.Name] = InventoryAttribute{ia.Name, newVal}
+				id.data[ia.Name] = client.InventoryAttribute{ia.Name, newVal}
 			case []string:
 				newVal := append(data.Value.([]string), ia.Value.(string))
-				id.data[ia.Name] = InventoryAttribute{ia.Name, newVal}
+				id.data[ia.Name] = client.InventoryAttribute{ia.Name, newVal}
 			}
 			continue
 		} else {
@@ -152,10 +153,10 @@ func (id *InventoryDataDecoder) Write(p []byte) (n int, err error) {
 	}
 }
 
-func readAttr(p string) (InventoryAttribute, error) {
+func readAttr(p string) (client.InventoryAttribute, error) {
 	val := strings.SplitN(p, "=", 2)
 	if len(val) < 2 {
-		return InventoryAttribute{}, errors.Errorf("incorrect line '%s'", p)
+		return client.InventoryAttribute{}, errors.Errorf("incorrect line '%s'", p)
 	}
-	return InventoryAttribute{val[0], val[1]}, nil
+	return client.InventoryAttribute{val[0], val[1]}, nil
 }
