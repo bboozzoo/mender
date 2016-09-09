@@ -42,7 +42,7 @@ func (f *fakeAuthorizer) Request(api ApiRequester, url string, adm AuthDataMesse
 type testAuthDataMessenger struct {
 	reqData  []byte
 	sigData  []byte
-	code     AuthToken
+	code     Token
 	reqError error
 	rspError error
 	rspData  []byte
@@ -112,7 +112,7 @@ func TestClientAuth(t *testing.T) {
 	defer ts.Close()
 
 	ac, err := NewApiClient(
-		httpsClientConfig{"client.crt", "client.key", "server.crt", true, false},
+		Config{"client.crt", "client.key", "server.crt", true, false},
 	)
 	assert.NotNil(t, ac)
 	assert.NoError(t, err)
