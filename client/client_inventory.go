@@ -29,7 +29,7 @@ type InventoryReporter interface {
 type InventoryClient struct {
 }
 
-func NewInventoryClient() InventoryReporter {
+func NewInventory() InventoryReporter {
 	return &InventoryClient{}
 }
 
