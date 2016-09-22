@@ -17,23 +17,54 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+
+	"github.com/mendersoftware/log"
 )
+
+const (
+	defaultPrefix = "prefix"
+)
+
+func mustMkdirAll(path string) {
+	err := os.MkdirAll(path, os.FileMode(0755))
+	if err != nil {
+		panic(fmt.Sprintf("failed to create path %s: %s", path, err))
+	}
+}
+
+func getPrefixPath() string {
+	ep := os.Getenv("MENDER_PREFIX")
+	if ep != "" {
+		return ep
+	}
+
+	p := path.Join(getRunningBinaryPath(), defaultPrefix)
+	log.Warnf("MENDER_PREFIX unset, using default '%s'", p)
+	return p
+}
 
 func getRunningBinaryPath() string {
 	return filepath.Dir(os.Args[0])
 }
 
 func getDataDirPath() string {
-	return path.Join(getRunningBinaryPath(), "support")
+	p := path.Join(getPrefixPath(), "share", "mender")
+	mustMkdirAll(p)
+	return p
 }
 
 func getStateDirPath() string {
-	return getRunningBinaryPath()
+	p := path.Join(getPrefixPath(), "var", "lib", "mender")
+	mustMkdirAll(p)
+	return p
 }
 
 func getConfDirPath() string {
-	return getRunningBinaryPath()
+	p := path.Join(getPrefixPath(), "etc", "mender")
+	mustMkdirAll(p)
+	return p
 }
