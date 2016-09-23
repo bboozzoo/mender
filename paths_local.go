@@ -68,3 +68,9 @@ func getConfDirPath() string {
 	mustMkdirAll(p)
 	return p
 }
+
+func getDevDirPath() string {
+	p := path.Join(getPrefixPath(), "dev")
+	mustMkdirAll(p)
+	return p
+}
