@@ -94,7 +94,8 @@ Provide a dummy tenant token:
 $ echo dummy > $PWD/prefix/var/lib/mender/authtentoken
 ```
 
-Use example config file as template (edit as needed):
+Use example config file as template (edit as needed, ex. point the client to
+http://docker.mender.io:9080):
 
 ```
 $ cp mender.conf.example $PWD/prefix/etc/mender/mender.conf
@@ -117,4 +118,40 @@ our local prefix tree:
 
 ```
 $ MENDER_PREFIX=$PWD/prefix ./mender -daemon -debug
+```
+
+### Mender prefix tree breakdown
+
+```
+prefix
+├── dev
+│   ├── active -> mmcblk0p2       <-- 'active' partition
+│   ├── inactive -> mmcblk0p1     <-- 'inactive' partition
+│   ├── mmcblk0p1                 <-- fake ..
+│   └── mmcblk0p2                 <--   partitions
+├── etc
+│   └── mender
+│       ├── build_mender          <-- build manifest file
+│       └── mender.conf           <-- client configuration file
+├── share
+│   └── mender
+│       ├── identity
+│       │   └── mender-device-identity         <-- identity script
+│       └── inventory                          <-- inventory data scripts
+│           ├── mender-inventory-hostinfo
+│           └── mender-inventory-network
+└── var
+    └── lib
+        └── mender                <-- client state directory
+            ├── authseq           <-- authorization sequence
+            ├── authtentoken      <-- tenan token
+            ├── authtoken         <-- API authorization token
+            ├── deployments.0001.31e6216f-1180-44c8-8e3a-2950e557bb46.log  <-- logs from ..
+            ├── deployments.0002.adcc2dc4-6f98-43e4-92a9-dfbae40bc059.log  <--   failed deployments
+            ├── deployments.0003.322a879a-f165-41d9-8e0c-4fc706e8bef8.log
+            ├── deployments.0004.0f1fc042-6b93-497b-b4a3-7072bab31083.log
+            ├── deployments.0005.e8994961-e61b-426d-8db6-0a10de817db4.log
+            ├── fake-env          <-- fake bootloader environment
+            ├── mender-agent.pem  <-- device key
+            └── state             <-- update state
 ```
