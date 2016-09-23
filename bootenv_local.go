@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	fakeEnvPath = path.Join(getRunningBinaryPath(), "fake-env")
+	fakeEnvPath = path.Join(getStateDirPath(), "fake-env")
 )
 
 type fakeEnv struct {
