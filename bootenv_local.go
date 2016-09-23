@@ -61,7 +61,11 @@ func (e *fakeEnv) WriteEnv(vars BootVars) error {
 	log.Infof("writing environment %v to %v", vars, fakeEnvPath)
 	env, err := e.ReadEnv()
 	if err != nil {
-		return errors.Wrapf(err, "failed to load current environment")
+		if !os.IsNotExist(errors.Cause(err)) {
+			return errors.Wrapf(err, "failed to load current environment")
+		} else {
+			env = BootVars{}
+		}
 	}
 
 	for k, v := range vars {
