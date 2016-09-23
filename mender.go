@@ -222,6 +222,7 @@ func (m mender) GetDeviceType() string {
 }
 
 func (m *mender) HasUpgrade() (bool, menderError) {
+	// TODO: move this check to UInstallCommitRebooter
 	env, err := m.env.ReadEnv("upgrade_available")
 	if err != nil {
 		return false, NewFatalError(err)
