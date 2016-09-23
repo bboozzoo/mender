@@ -18,6 +18,8 @@ package main
 
 import (
 	"io"
+	"os"
+	"path"
 
 	"github.com/mendersoftware/log"
 	"github.com/pkg/errors"
@@ -35,6 +37,8 @@ type device struct {
 }
 
 func NewDevice(env BootEnvReadWriter, sc StatCommander, config deviceConfig) *device {
+	log.Infof("new device using config: %+v", config)
+
 	partitions := partitions{
 		StatCommander:     sc,
 		BootEnvReadWriter: env,
@@ -43,7 +47,28 @@ func NewDevice(env BootEnvReadWriter, sc StatCommander, config deviceConfig) *de
 		active:            "",
 		inactive:          "",
 	}
+
+	if partitions.rootfsPartA == "" {
+		partitions.rootfsPartA = "mmcblk0p1"
+	}
+	if partitions.rootfsPartB == "" {
+		partitions.rootfsPartB = "mmcblk0p2"
+	}
+	partitions.rootfsPartA = path.Join(getDevDirPath(),
+		partitions.rootfsPartA)
+	partitions.rootfsPartB = path.Join(getDevDirPath(),
+		partitions.rootfsPartB)
+
+	partitions.active = partitions.rootfsPartA
+	partitions.inactive = partitions.rootfsPartB
+
+	log.Infof("partitions mapped to %s %s",
+		partitions.rootfsPartA, partitions.rootfsPartB)
+
 	device := device{env, sc, partitions}
+
+	device.doLinks()
+
 	return &device
 }
 
@@ -64,9 +89,20 @@ func (d *device) Rollback() error {
 }
 
 func (d *device) InstallUpdate(image io.ReadCloser, size int64) error {
-	log.Infof("install update of size %v", size)
+	log.Infof("install update of size %v to partition %s",
+		size, d.parts.inactive)
 
-	err := d.WriteEnv(BootVars{
+	f, err := os.Create(d.parts.inactive)
+	if err != nil {
+		return errors.Wrapf(err, "failed to open file: %s", d.parts.inactive)
+	}
+
+	_, err = io.Copy(f, image)
+	if err != nil {
+		return errors.Wrap(err, "failed to copy update data")
+	}
+
+	err = d.WriteEnv(BootVars{
 		"upgrade_available": "1",
 	})
 	if err != nil {
@@ -78,10 +114,23 @@ func (d *device) InstallUpdate(image io.ReadCloser, size int64) error {
 func (d *device) EnableUpdatedPartition() error {
 
 	log.Infof("enable updated partition")
+
+	d.parts.active, d.parts.inactive = d.parts.inactive, d.parts.active
+	d.doLinks()
 	return nil
 }
 
 func (d *device) CommitUpdate() error {
 	log.Info("Commiting update")
-	return nil
+
+	return d.WriteEnv(BootVars{"upgrade_available": "0"})
+}
+
+func (d *device) doLinks() {
+	ap := path.Join(getDevDirPath(), "active")
+	ip := path.Join(getDevDirPath(), "inactive")
+	os.Remove(ap)
+	os.Remove(ip)
+	os.Symlink(path.Base(d.parts.active), ap)
+	os.Symlink(path.Base(d.parts.inactive), ip)
 }
