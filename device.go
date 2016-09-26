@@ -17,9 +17,7 @@
 package main
 
 import (
-	"fmt"
 	"io"
-	"os"
 	"strconv"
 
 	"github.com/mendersoftware/log"
@@ -73,7 +71,7 @@ func (d *device) Rollback() error {
 
 func (d *device) InstallUpdate(image io.ReadCloser, size int64) error {
 
-	log.Debugf("Trying to install update: [%v] of size: %d", image, size)
+	log.Debugf("Trying to install update of size: %d", size)
 	if image == nil || size < 0 {
 		return errors.New("Have invalid update. Aborting.")
 	}
@@ -83,21 +81,24 @@ func (d *device) InstallUpdate(image io.ReadCloser, size int64) error {
 		return err
 	}
 
-	log.Debugf("Installing update to inactive partition: %s", inactivePartition)
-
-	partitionSize, err := d.getPartitionSize(inactivePartition)
+	b := &BlockDevice{Path: inactivePartition}
+	w, err := io.Copy(b, image)
 	if err != nil {
-		return err
+		log.Errorf("failed to write image data to device %v: %v",
+			inactivePartition, err)
 	}
 
-	if size <= partitionSize {
-		if err := writeToPartition(image, size, inactivePartition); err != nil {
-			return err
+	log.Infof("written %v/%v bytes of update to device %v",
+		w, size, inactivePartition)
+
+	if cerr := b.Close(); cerr != nil {
+		log.Errorf("closing device %v failed: %v", inactivePartition, cerr)
+		if err != nil {
+			return cerr
 		}
-		return nil
 	}
-	return errors.Errorf("inactive partition %s too small, partition: %v image %v",
-		inactivePartition, partitionSize, size)
+
+	return err
 }
 
 func (d *device) getInactivePartition() (string, error) {
@@ -139,22 +140,4 @@ func (d *device) CommitUpdate() error {
 	log.Info("Commiting update")
 	// For now set only appropriate boot flags
 	return d.WriteEnv(BootVars{"upgrade_available": "0"})
-}
-
-func writeToPartition(image io.Reader, imageSize int64, partition string) error {
-	// Write image file into partition.
-	log.Debugf("Writing image [%v] to partition: %s.", image, partition)
-	partFd, err := os.OpenFile(partition, os.O_WRONLY, 0)
-	if err != nil {
-		return fmt.Errorf("Not able to open partition: %s: %s\n",
-			partition, err.Error())
-	}
-	defer partFd.Close()
-
-	if _, err = io.Copy(partFd, image); err != nil {
-		return err
-	}
-
-	partFd.Sync()
-	return nil
 }
