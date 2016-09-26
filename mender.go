@@ -20,9 +20,11 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/mendersoftware/log"
+	"github.com/mendersoftware/mender/image"
 	"github.com/pkg/errors"
 )
 
@@ -438,6 +440,37 @@ func (m *mender) InventoryRefresh() error {
 	err = ic.Submit(m.api.Request(m.authToken), m.config.ServerURL, idata)
 	if err != nil {
 		return errors.Wrapf(err, "failed to submit inventory data")
+	}
+
+	return nil
+}
+
+func (m *mender) InstallUpdate(stream io.ReadCloser, size int64) error {
+
+	pr, pw := io.Pipe()
+	wg := sync.WaitGroup{}
+
+	log.Debugf("staring artifact installer")
+	wg.Add(1)
+	go func() {
+		if err := image.FromArtifact(stream, pw, m.GetDeviceType()); err != nil {
+			log.Errorf("failed to install image from artifact: %v", err)
+			// close reader
+			pw.CloseWithError(errors.Wrapf(err, "install from artifact"))
+		} else {
+			pw.Close()
+		}
+		wg.Done()
+	}()
+
+	defer func() {
+		log.Debugf("waiting for artifact installer to finish")
+		wg.Wait()
+	}()
+
+	if err := m.UInstallCommitRebooter.InstallUpdate(pr, 0); err != nil {
+		log.Errorf("update image installation failed: %v", err)
+		return err
 	}
 
 	return nil
