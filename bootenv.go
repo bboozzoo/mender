@@ -25,8 +25,6 @@ import (
 	"github.com/mendersoftware/log"
 )
 
-type BootVars map[string]string
-
 type uBootEnv struct {
 	Commander
 }
