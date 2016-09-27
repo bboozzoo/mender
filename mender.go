@@ -17,14 +17,15 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
+	"github.com/mendersoftware/artifacts/parser"
+	"github.com/mendersoftware/artifacts/reader"
 	"github.com/mendersoftware/log"
-	"github.com/mendersoftware/mender/image"
 	"github.com/pkg/errors"
 )
 
@@ -445,32 +446,31 @@ func (m *mender) InventoryRefresh() error {
 	return nil
 }
 
-func (m *mender) InstallUpdate(stream io.ReadCloser, size int64) error {
+func (m *mender) InstallUpdate(from io.ReadCloser, size int64) error {
 
-	pr, pw := io.Pipe()
-	wg := sync.WaitGroup{}
+	ar := areader.NewReader(from)
+	rp := parser.RootfsParser{
+		DataFunc: func(r io.Reader, dt string, uf parser.UpdateFile) error {
+			if dt != m.GetDeviceType() {
+				return errors.Errorf("unexpected device type %v, expected to see %v",
+					dt, m.GetDeviceType())
+			}
 
-	log.Debugf("staring artifact installer")
-	wg.Add(1)
-	go func() {
-		if err := image.FromArtifact(stream, pw, m.GetDeviceType()); err != nil {
-			log.Errorf("failed to install image from artifact: %v", err)
-			// close reader
-			pw.CloseWithError(errors.Wrapf(err, "install from artifact"))
-		} else {
-			pw.Close()
-		}
-		wg.Done()
-	}()
+			log.Infof("installing update %v of size %v", uf.Name, uf.Size)
+			err := m.UInstallCommitRebooter.InstallUpdate(ioutil.NopCloser(r), uf.Size)
+			if err != nil {
+				log.Errorf("update image installation failed: %v", err)
+				return err
+			}
+			return nil
+		},
+	}
+	ar.PushWorker(&rp, "0000")
+	defer ar.Close()
 
-	defer func() {
-		log.Debugf("waiting for artifact installer to finish")
-		wg.Wait()
-	}()
-
-	if err := m.UInstallCommitRebooter.InstallUpdate(pr, 0); err != nil {
-		log.Errorf("update image installation failed: %v", err)
-		return err
+	_, err := ar.Read()
+	if err != nil {
+		return errors.Wrapf(err, "failed to read update")
 	}
 
 	return nil
