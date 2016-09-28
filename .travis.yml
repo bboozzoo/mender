@@ -76,6 +76,9 @@ script:
     # Test packages pararell (xargs -P)
     - go list ./... | grep -v vendor | xargs -n1 -I {} -P 4 go test -v -covermode=count -coverprofile=../../../{}/profile.coverprofile {}
 
+    # Build local variant
+    - make build V=1 LOCAL=1
+
     # Build
     - make build V=1
 
