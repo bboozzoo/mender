@@ -126,6 +126,19 @@ func (d *device) CommitUpdate() error {
 	return d.WriteEnv(BootVars{"upgrade_available": "0"})
 }
 
+func (d *device) HasUpdate() (bool, error) {
+	env, err := d.ReadEnv("upgrade_available")
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to read environment variable")
+	}
+	upgradeAvailable := env["upgrade_available"]
+
+	if upgradeAvailable == "1" {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (d *device) doLinks() {
 	ap := path.Join(getDevDirPath(), "active")
 	ip := path.Join(getDevDirPath(), "inactive")
