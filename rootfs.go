@@ -29,7 +29,6 @@ func doRootfs(device UInstaller, args runOptionsType) error {
 	var image io.ReadCloser
 	var imageSize int64
 	var err error
-	var upclient client.Updater
 
 	if args == (runOptionsType{}) {
 		return errors.New("rootfs called without needed parameters")
@@ -47,11 +46,10 @@ func doRootfs(device UInstaller, args runOptionsType) error {
 		if err != nil {
 			return errors.New("Can not initialize client for performing network update.")
 		}
-		upclient = client.NewUpdate()
 
 		log.Debug("Client initialized. Start downloading image.")
 
-		image, imageSize, err = upclient.FetchUpdate(ac, updateLocation)
+		image, imageSize, err = client.FetchUpdate(ac, updateLocation, 0)
 		log.Debugf("Image downloaded: %d [%v] [%v]", imageSize, image, err)
 	} else {
 		// perform update from local file

@@ -149,12 +149,10 @@ func (m MenderState) String() string {
 
 type mender struct {
 	UInstallCommitRebooter
-	updater        client.Updater
 	state          State
 	config         menderConfig
 	manifestFile   string
 	forceBootstrap bool
-	authReq        client.AuthRequester
 	authMgr        AuthManager
 	api            *client.ApiClient
 	authToken      client.AuthToken
@@ -174,12 +172,10 @@ func NewMender(config menderConfig, pieces MenderPieces) (*mender, error) {
 
 	m := &mender{
 		UInstallCommitRebooter: pieces.device,
-		updater:                client.NewUpdate(),
 		manifestFile:           defaultManifestFile,
 		state:                  initState,
 		config:                 config,
 		authMgr:                pieces.authMgr,
-		authReq:                client.NewAuth(),
 		api:                    api,
 		authToken:              noAuthToken,
 	}
@@ -279,7 +275,7 @@ func (m *mender) Authorize() menderError {
 
 	m.authToken = noAuthToken
 
-	rsp, err := m.authReq.Request(m.api, m.config.ServerURL, m.authMgr)
+	rsp, err := client.RequestAuth(m.api, m.config.ServerURL, m.authMgr)
 	if err != nil {
 		if err == client.AuthErrorUnauthorized {
 			// make sure to remove auth token once device is rejected
@@ -315,7 +311,7 @@ func (m *mender) doBootstrap() menderError {
 }
 
 func (m *mender) FetchUpdate(url string) (io.ReadCloser, int64, error) {
-	return m.updater.FetchUpdate(m.api.Request(m.authToken), url)
+	return client.FetchUpdate(m.api.Request(m.authToken), url, 0)
 }
 
 // Check if new update is available. In case of errors, returns nil and error
@@ -327,7 +323,7 @@ func (m *mender) CheckUpdate() (*client.UpdateResponse, menderError) {
 	// 	return errors.New("")
 	// }
 
-	haveUpdate, err := m.updater.GetScheduledUpdate(m.api.Request(m.authToken),
+	haveUpdate, err := client.GetScheduledUpdate(m.api.Request(m.authToken),
 		m.config.ServerURL)
 
 	if err != nil {
@@ -360,8 +356,7 @@ func (m *mender) CheckUpdate() (*client.UpdateResponse, menderError) {
 }
 
 func (m *mender) ReportUpdateStatus(update client.UpdateResponse, status string) menderError {
-	s := client.NewStatus()
-	err := s.Report(m.api.Request(m.authToken), m.config.ServerURL,
+	err := client.ReportStatus(m.api.Request(m.authToken), m.config.ServerURL,
 		client.StatusReport{
 			DeploymentID: update.ID,
 			Status:       status,
@@ -374,8 +369,7 @@ func (m *mender) ReportUpdateStatus(update client.UpdateResponse, status string)
 }
 
 func (m *mender) UploadLog(update client.UpdateResponse, logs []byte) menderError {
-	s := client.NewLog()
-	err := s.Upload(m.api.Request(m.authToken), m.config.ServerURL,
+	err := client.UploadLog(m.api.Request(m.authToken), m.config.ServerURL,
 		client.LogData{
 			DeploymentID: update.ID,
 			Messages:     logs,
@@ -405,7 +399,6 @@ func (m *mender) RunState(ctx *StateContext) (State, bool) {
 }
 
 func (m *mender) InventoryRefresh() error {
-	ic := client.NewInventory()
 	idg := NewInventoryDataRunner(path.Join(getDataDirPath(), "inventory"))
 
 	idata, err := idg.Get()
@@ -430,7 +423,7 @@ func (m *mender) InventoryRefresh() error {
 		return nil
 	}
 
-	err = ic.Submit(m.api.Request(m.authToken), m.config.ServerURL, idata)
+	err = client.SubmitInventory(m.api.Request(m.authToken), m.config.ServerURL, idata)
 	if err != nil {
 		return errors.Wrapf(err, "failed to submit inventory data")
 	}
