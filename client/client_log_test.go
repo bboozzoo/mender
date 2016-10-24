@@ -49,9 +49,6 @@ func TestLogUploadClient(t *testing.T) {
 	assert.NotNil(t, ac)
 	assert.NoError(t, err)
 
-	client := NewLog()
-	assert.NotNil(t, client)
-
 	ld := LogData{
 		DeploymentID: "deployment1",
 		Messages: []byte(`{ "messages":
@@ -59,10 +56,10 @@ func TestLogUploadClient(t *testing.T) {
 { "time": "12:12:13", "level": "debug", "msg": "log bar" }]
 }`),
 	}
-	err = client.Upload(NewMockApiClient(nil, errors.New("foo")), ts.URL, ld)
+	err = UploadLog(NewMockApiClient(nil, errors.New("foo")), ts.URL, ld)
 	assert.Error(t, err)
 
-	err = client.Upload(ac, ts.URL, ld)
+	err = UploadLog(ac, ts.URL, ld)
 	assert.NoError(t, err)
 	assert.NotNil(t, responder.recdata)
 	assert.JSONEq(t, `{
@@ -81,7 +78,7 @@ func TestLogUploadClient(t *testing.T) {
 	assert.Equal(t, apiPrefix+"deployments/device/deployments/deployment1/log", responder.path)
 
 	responder.httpStatus = 401
-	err = client.Upload(ac, ts.URL, LogData{
+	err = UploadLog(ac, ts.URL, LogData{
 		DeploymentID: "deployment1",
 		Messages: []byte(`[{ "time": "12:12:12", "level": "error", "msg": "log foo" },
 { "time": "12:12:13", "level": "debug", "msg": "log bar" }]`),

@@ -26,20 +26,7 @@ import (
 
 var AuthErrorUnauthorized = errors.New("authentication request rejected")
 
-type AuthRequester interface {
-	Request(api ApiRequester, server string, dataSrc AuthDataMessenger) ([]byte, error)
-}
-
-// Auth client wrapper. Instantiate by yourself or use `NewAuthClient()` helper
-type AuthClient struct {
-}
-
-func NewAuth() *AuthClient {
-	ac := AuthClient{}
-	return &ac
-}
-
-func (u *AuthClient) Request(api ApiRequester, server string, dataSrc AuthDataMessenger) ([]byte, error) {
+func RequestAuth(api ApiRequester, server string, dataSrc AuthDataMessenger) ([]byte, error) {
 
 	req, err := makeAuthRequest(server, dataSrc)
 	if err != nil {

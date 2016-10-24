@@ -49,10 +49,7 @@ func TestStatusClient(t *testing.T) {
 	assert.NotNil(t, ac)
 	assert.NoError(t, err)
 
-	client := NewStatus()
-	assert.NotNil(t, client)
-
-	err = client.Report(NewMockApiClient(nil, errors.New("foo")),
+	err = ReportStatus(NewMockApiClient(nil, errors.New("foo")),
 		ts.URL,
 		StatusReport{
 			DeploymentID: "deployment1",
@@ -60,7 +57,7 @@ func TestStatusClient(t *testing.T) {
 		})
 	assert.Error(t, err)
 
-	err = client.Report(ac, ts.URL, StatusReport{
+	err = ReportStatus(ac, ts.URL, StatusReport{
 		DeploymentID: "deployment1",
 		Status:       StatusFailure,
 	})
@@ -70,7 +67,7 @@ func TestStatusClient(t *testing.T) {
 	assert.Equal(t, apiPrefix+"deployments/device/deployments/deployment1/status", responder.path)
 
 	responder.httpStatus = 401
-	err = client.Report(ac, ts.URL, StatusReport{
+	err = ReportStatus(ac, ts.URL, StatusReport{
 		DeploymentID: "deployment1",
 		Status:       StatusSuccess,
 	})

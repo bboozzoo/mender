@@ -103,13 +103,10 @@ func TestClientAuth(t *testing.T) {
 	assert.NotNil(t, ac)
 	assert.NoError(t, err)
 
-	client := NewAuth()
-	assert.NotNil(t, client)
-
 	msger := &testAuthDataMessenger{
 		reqData: []byte("foobar"),
 	}
-	rsp, err := client.Request(ac, ts.URL, msger)
+	rsp, err := RequestAuth(ac, ts.URL, msger)
 	assert.NoError(t, err)
 	assert.NotNil(t, rsp)
 	assert.Equal(t, responder.data, string(rsp))
@@ -117,6 +114,6 @@ func TestClientAuth(t *testing.T) {
 	assert.Equal(t, "application/json", responder.headers.Get("Content-Type"))
 
 	responder.httpStatus = 401
-	_, err = client.Request(ac, ts.URL, msger)
+	_, err = RequestAuth(ac, ts.URL, msger)
 	assert.Error(t, err)
 }

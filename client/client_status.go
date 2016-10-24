@@ -32,24 +32,14 @@ const (
 	StatusError       = "error"
 )
 
-type StatusReporter interface {
-	Report(api ApiRequester, server string, report StatusReport) error
-}
-
 type StatusReport struct {
 	DeploymentID string `json:"-"`
 	Status       string `json:"status"`
 }
 
-type StatusClient struct {
-}
-
-func NewStatus() StatusReporter {
-	return &StatusClient{}
-}
-
-// Report status information to the backend
-func (u *StatusClient) Report(api ApiRequester, url string, report StatusReport) error {
+// ReportStatus report update status information to the backend. Returns non-nil
+// error in case of failure.
+func ReportStatus(api ApiRequester, url string, report StatusReport) error {
 	req, err := makeStatusReportRequest(url, report)
 	if err != nil {
 		return errors.Wrapf(err, "failed to prepare status report request")

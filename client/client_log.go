@@ -22,24 +22,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-type LogUploader interface {
-	Upload(api ApiRequester, server string, logs LogData) error
-}
-
 type LogData struct {
 	DeploymentID string `json:"-"`
 	Messages     []byte `json:"messages"`
 }
 
-type LogUploadClient struct {
-}
-
-func NewLog() LogUploader {
-	return &LogUploadClient{}
-}
-
-// Report status information to the backend
-func (u *LogUploadClient) Upload(api ApiRequester, url string, logs LogData) error {
+// UploadLog uploads application log to the backend. Returns non-nil error in
+// case of failure.
+func UploadLog(api ApiRequester, url string, logs LogData) error {
 	req, err := makeLogUploadRequest(url, &logs)
 	if err != nil {
 		return errors.Wrapf(err, "failed to prepare log upload request")

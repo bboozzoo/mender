@@ -49,17 +49,14 @@ func TestInventoryClient(t *testing.T) {
 	assert.NotNil(t, ac)
 	assert.NoError(t, err)
 
-	client := NewInventory()
-	assert.NotNil(t, client)
-
-	err = client.Submit(NewMockApiClient(nil, errors.New("foo")),
+	err = SubmitInventory(NewMockApiClient(nil, errors.New("foo")),
 		ts.URL,
 		InventoryData{
 			{"foo", "bar"},
 		})
 	assert.Error(t, err)
 
-	err = client.Submit(ac, ts.URL, InventoryData{
+	err = SubmitInventory(ac, ts.URL, InventoryData{
 		{"foo", "bar"},
 		{"bar", []string{"baz", "zen"}},
 	})
@@ -71,6 +68,6 @@ func TestInventoryClient(t *testing.T) {
 	assert.Equal(t, apiPrefix+"inventory/device/attributes", responder.path)
 
 	responder.httpStatus = 401
-	err = client.Submit(ac, ts.URL, nil)
+	err = SubmitInventory(ac, ts.URL, nil)
 	assert.Error(t, err)
 }

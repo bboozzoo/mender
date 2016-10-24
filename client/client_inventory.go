@@ -22,19 +22,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-type InventorySubmitter interface {
-	Submit(api ApiRequester, server string, data interface{}) error
-}
-
-type InventoryClient struct {
-}
-
-func NewInventory() InventorySubmitter {
-	return &InventoryClient{}
-}
-
-// Report status information to the backend
-func (i *InventoryClient) Submit(api ApiRequester, url string, data interface{}) error {
+// SubmitInventory reports status information to the backend, returs an non-nil
+// error in case of failure.
+func SubmitInventory(api ApiRequester, url string, data interface{}) error {
 	req, err := makeInventorySubmitRequest(url, data)
 	if err != nil {
 		return errors.Wrapf(err, "failed to prepare inventory submit request")

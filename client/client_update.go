@@ -23,35 +23,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-const (
-	minimumImageSize int64 = 4096 //kB
-)
-
-type Updater interface {
-	GetScheduledUpdate(api ApiRequester, server string) (interface{}, error)
-	FetchUpdate(api ApiRequester, url string) (io.ReadCloser, int64, error)
-}
-
 var (
+	defaultMinFetchSize int64 = 4096 //kB
+
 	ErrNotAuthorized = errors.New("client not authorized")
 )
 
-type UpdateClient struct {
-	minImageSize int64
+// GetScheduledUpdate obtains information on a pending update from the backend.
+func GetScheduledUpdate(api ApiRequester, server string) (interface{}, error) {
+	return getUpdateInfo(api, processUpdateResponse, server)
 }
 
-func NewUpdate() *UpdateClient {
-	up := UpdateClient{
-		minImageSize: minimumImageSize,
-	}
-	return &up
-}
-
-func (u *UpdateClient) GetScheduledUpdate(api ApiRequester, server string) (interface{}, error) {
-	return u.getUpdateInfo(api, processUpdateResponse, server)
-}
-
-func (u *UpdateClient) getUpdateInfo(api ApiRequester, process RequestProcessingFunc,
+func getUpdateInfo(api ApiRequester, process RequestProcessingFunc,
 	server string) (interface{}, error) {
 	req, err := makeUpdateCheckRequest(server)
 	if err != nil {
@@ -70,8 +53,13 @@ func (u *UpdateClient) getUpdateInfo(api ApiRequester, process RequestProcessing
 	return data, err
 }
 
-// Returns a byte stream which is a download of the given link.
-func (u *UpdateClient) FetchUpdate(api ApiRequester, url string) (io.ReadCloser, int64, error) {
+// FetchUpdate returns a byte stream which is a download of the given link along
+// with size of the download. Returns non-nil error in case of failure.
+func FetchUpdate(api ApiRequester, url string, minSize int64) (io.ReadCloser, int64, error) {
+	if minSize == 0 {
+		minSize = defaultMinFetchSize
+	}
+
 	req, err := makeUpdateFetchRequest(url)
 	if err != nil {
 		return nil, -1, errors.Wrapf(err, "failed to create update fetch request")
@@ -94,9 +82,10 @@ func (u *UpdateClient) FetchUpdate(api ApiRequester, url string) (io.ReadCloser,
 	if r.ContentLength < 0 {
 		r.Body.Close()
 		return nil, -1, errors.New("Will not continue with unknown image size.")
-	} else if r.ContentLength < u.minImageSize {
+	} else if r.ContentLength < minSize {
 		r.Body.Close()
-		log.Errorf("Image smaller than expected. Expected: %d, received: %d", u.minImageSize, r.ContentLength)
+		log.Errorf("Image smaller than expected. Expected: %d, received: %d",
+			minSize, r.ContentLength)
 		return nil, -1, errors.New("Image size is smaller than expected. Aborting.")
 	}
 
