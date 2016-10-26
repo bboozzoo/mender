@@ -126,6 +126,18 @@ func (d *device) CommitUpdate() error {
 	return d.WriteEnv(BootVars{"upgrade_available": "0"})
 }
 
+func (d *device) HasUpdate() (bool, error) {
+	log.Infof("rollback")
+	vars, err := d.ReadEnv("upgrade_available")
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to update environment after install")
+	}
+	if has, ok := vars["upgrade_available"]; ok && has == "1" {
+		return true, nil
+	}
+	return false, nil
+}
+
 func (d *device) doLinks() {
 	ap := path.Join(getDevDirPath(), "active")
 	ip := path.Join(getDevDirPath(), "inactive")
